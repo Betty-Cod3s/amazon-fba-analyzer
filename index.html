@@ -1,4 +1,801 @@
-function analyzeData() {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amazon FBM to FBA Analyzer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #fafafa;
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+            overflow: hidden;
+        }
+
+        .header {
+            background: white;
+            padding: 48px 48px 32px;
+            text-align: center;
+            border-bottom: 1px solid #f0f0f0;
+            position: relative;
+        }
+
+        .header-controls {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .toggle-btn {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toggle-btn:hover {
+            background: #e5e7eb;
+            border-color: #9ca3af;
+        }
+
+        .toggle-btn.active {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: white;
+        }
+
+        body.dark {
+            background: #111827;
+            color: #f9fafb;
+        }
+
+        .dark .container {
+            background: #1f2937;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .dark .header {
+            background: #1f2937;
+            border-bottom-color: #374151;
+        }
+
+        .dark .header h1 {
+            color: #f9fafb;
+        }
+
+        .dark .header p {
+            color: #d1d5db;
+        }
+
+        .dark .upload-card {
+            background: #374151;
+            border-color: #4b5563;
+        }
+
+        .dark .upload-card:hover {
+            border-color: #60a5fa;
+            background: #1e3a8a;
+        }
+
+        .dark .upload-card.uploaded {
+            border-color: #10b981;
+            background: #064e3b;
+        }
+
+        .dark .criteria-section {
+            background: #1f2937;
+            border-color: #374151;
+        }
+
+        .dark .analyze-btn {
+            background: #f9fafb;
+            color: #1f2937;
+        }
+
+        .dark .results-header {
+            background: #374151;
+            border-color: #4b5563;
+        }
+
+        .dark .results-table {
+            background: #1f2937;
+            border-color: #4b5563;
+        }
+
+        .dark th {
+            background: #374151;
+            color: #d1d5db;
+        }
+
+        .dark td {
+            color: #f9fafb;
+            border-bottom-color: #374151;
+        }
+
+        .dark .debug-panel {
+            background: #1e293b !important;
+            border-color: #0ea5e9 !important;
+        }
+
+        .dark .debug-panel h3 {
+            color: #7dd3fc !important;
+        }
+
+        .dark .debug-panel #debugContent {
+            color: #cbd5e1 !important;
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            letter-spacing: -0.025em;
+        }
+
+        .header p {
+            font-size: 1.125rem;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .content {
+            padding: 48px;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .upload-card {
+            background: #f8f9fa;
+            border: 2px dashed #e0e0e0;
+            border-radius: 12px;
+            padding: 32px 24px;
+            text-align: center;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .upload-card:hover {
+            border-color: #2563eb;
+            background: #f8faff;
+        }
+
+        .upload-card.uploaded {
+            border-color: #22c55e;
+            background: #f0fdf4;
+            border-style: solid;
+        }
+
+        .upload-card h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .help-btn {
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s ease;
+            padding: 0;
+        }
+
+        .help-btn:hover {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: white;
+        }
+
+        .help-content {
+            background: #f8faff;
+            border: 1px solid #e0e7ff;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            text-align: left;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .help-content strong {
+            color: #1e40af;
+            font-weight: 600;
+        }
+
+        .help-content ul {
+            margin: 8px 0 0 16px;
+            padding: 0;
+        }
+
+        .help-content li {
+            margin-bottom: 4px;
+            color: #374151;
+        }
+
+        .upload-card p {
+            color: #666;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .upload-card.uploaded .upload-btn {
+            background: #22c55e;
+        }
+
+        .criteria-section {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 32px;
+            margin-bottom: 32px;
+        }
+
+        .upload-status {
+            background: #f8faff;
+            border: 1px solid #e0e7ff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        .status-indicators {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            margin-bottom: 12px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .status-icon {
+            font-size: 1.2rem;
+        }
+
+        .status-message {
+            font-size: 0.875rem;
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        .status-message.ready {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .criteria-section h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 24px;
+        }
+
+        .criteria-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        .input-group input {
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            color: #1a1a1a;
+            transition: border-color 0.2s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .analyze-btn {
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .analyze-btn:hover {
+            background: #333;
+        }
+
+        .analyze-btn:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .debug-panel {
+            background: #f0f9ff;
+            border: 2px solid #0284c7;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .debug-panel h3 {
+            color: #0c4a6e;
+            margin-bottom: 16px;
+            font-size: 1.125rem;
+        }
+
+        #debugContent {
+            font-family: 'Monaco', monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
+            color: #374151;
+            white-space: pre-wrap;
+        }
+
+        .results {
+            margin-top: 32px;
+        }
+
+        .results-header {
+            background: #f8f9fa;
+            padding: 20px 24px;
+            border-radius: 12px 12px 0 0;
+            border: 1px solid #e0e0e0;
+            border-bottom: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .results-header h3 {
+            color: #1a1a1a;
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .export-btn {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .export-btn:hover {
+            background: #4b5563;
+        }
+
+        .results-table {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 16px 24px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            color: #1a1a1a;
+            font-size: 0.9rem;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status {
+            display: none;
+            text-align: center;
+            padding: 48px;
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .loading {
+            color: #2563eb;
+        }
+
+        .error {
+            color: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 24px;
+            }
+            
+            .header {
+                padding: 32px 24px 24px;
+            }
+            
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .criteria-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.875rem;
+            }
+            
+            .results-header {
+                flex-direction: column;
+                gap: 16px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-controls">
+                <button class="toggle-btn" id="themeToggle" onclick="toggleTheme()">
+                    <span id="themeIcon">🌙</span>
+                    <span id="themeText">Dark</span>
+                </button>
+            </div>
+            <h1>Amazon FBM to FBA Analyzer</h1>
+            <p>Identify profitable products ready for FBA conversion</p>
+        </div>
+        
+        <div class="content">
+            <div class="upload-status" id="uploadStatus">
+                <div class="status-indicators">
+                    <div class="status-indicator">
+                        <span class="status-icon" id="businessIcon">⭕</span>
+                        <span>Business Report</span>
+                    </div>
+                    <div class="status-indicator">
+                        <span class="status-icon" id="inventoryIcon">⭕</span>
+                        <span>Inventory Report</span>
+                    </div>
+                </div>
+                <div class="status-message" id="statusMessage">
+                    Upload both reports below to begin analysis
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-card" id="businessCard">
+                    <h3>
+                        Business Report
+                        <button class="help-btn" onclick="window.open('https://sellercentral.amazon.com/business-reports', '_blank')" title="Open Seller Central Business Reports">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                            </svg>
+                        </button>
+                    </h3>
+                    <p>Upload your "Detail Page Sales and Traffic" report from Amazon Seller Central</p>
+                    <div class="help-content">
+                        <strong>How to download:</strong>
+                        <ul>
+                            <li>Click the help icon to open Business Reports</li>
+                            <li>Go to "Detail Page Sales and Traffic" section</li>
+                            <li>Select the report and choose your date range</li>
+                            <li>Download and upload it here</li>
+                        </ul>
+                    </div>
+                    <input type="file" id="businessReport" class="file-input" accept=".csv">
+                    <button class="upload-btn" onclick="document.getElementById('businessReport').click()">
+                        Choose File
+                    </button>
+                    <div id="businessStatus"></div>
+                </div>
+                
+                <div class="upload-card" id="inventoryCard">
+                    <h3>
+                        Inventory Report
+                        <button class="help-btn" onclick="window.open('https://sellercentral.amazon.com/listing/reports', '_blank')" title="Open Seller Central Reports">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                            </svg>
+                        </button>
+                    </h3>
+                    <p>Upload your "All Listings Report" from Seller Central</p>
+                    <div class="help-content">
+                        <strong>How to download:</strong>
+                        <ul>
+                            <li>Click the help icon to open Reports</li>
+                            <li>Select "All Listings Report (Custom)"</li>
+                            <li>Ensure item-name, price, and fulfillment-channel are selected</li>
+                            <li>Download and upload it here</li>
+                        </ul>
+                    </div>
+                    <input type="file" id="inventoryReport" class="file-input" accept=".csv,.txt">
+                    <button class="upload-btn" onclick="document.getElementById('inventoryReport').click()">
+                        Choose File
+                    </button>
+                    <div id="inventoryStatus"></div>
+                </div>
+            </div>
+            
+            <div class="criteria-section">
+                <h3>Analysis Criteria</h3>
+                <div class="criteria-inputs">
+                    <div class="input-group">
+                        <label>Minimum Units Sold (30 days)</label>
+                        <input type="number" id="minUnits" value="7" placeholder="7">
+                    </div>
+                    <div class="input-group">
+                        <label>Analysis Period (days)</label>
+                        <input type="number" id="analysisPeriod" value="30" placeholder="30">
+                    </div>
+                    <div class="input-group">
+                        <label>Minimum Price ($)</label>
+                        <input type="number" id="minPrice" value="0" placeholder="0" step="0.01">
+                    </div>
+                </div>
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeData()" disabled>
+                    Analyze Data
+                </button>
+            </div>
+            
+            <div class="status" id="status"></div>
+            
+            <div class="debug-panel" id="debugPanel" style="display: none;">
+                <h3>🔍 Debug Information</h3>
+                <div id="debugContent"></div>
+            </div>
+
+            <div class="results" id="results" style="display: none;">
+                <div class="results-header">
+                    <h3 id="resultsTitle">FBA Conversion Opportunities</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="export-btn" onclick="toggleDebug()" style="background: #0284c7;">Show Debug Info</button>
+                        <button class="export-btn" onclick="exportResults()">Export CSV</button>
+                    </div>
+                </div>
+                <div class="results-table">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>ASIN</th>
+                                <th>Product Name</th>
+                                <th>Units Sold (30d)</th>
+                                <th>Current Price</th>
+                                <th>Current Method</th>
+                                <th>Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let businessData = null;
+        let inventoryData = null;
+        let analysisResults = [];
+        let debugInfo = '';
+        let isDarkMode = false;
+
+        function toggleTheme() {
+            isDarkMode = !isDarkMode;
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            if (isDarkMode) {
+                body.classList.add('dark');
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            } else {
+                body.classList.remove('dark');
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            }
+        }
+
+        function toggleDebug() {
+            const panel = document.getElementById('debugPanel');
+            const btn = event.target;
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                btn.textContent = 'Hide Debug Info';
+                document.getElementById('debugContent').textContent = debugInfo;
+            } else {
+                panel.style.display = 'none';
+                btn.textContent = 'Show Debug Info';
+            }
+        }
+
+        document.getElementById('businessReport').addEventListener('change', function(e) {
+            handleFileUpload(e, 'business');
+        });
+
+        document.getElementById('inventoryReport').addEventListener('change', function(e) {
+            handleFileUpload(e, 'inventory');
+        });
+
+        function handleFileUpload(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const card = type === 'business' ? 'businessCard' : 'inventoryCard';
+            const status = type === 'business' ? 'businessStatus' : 'inventoryStatus';
+            
+            document.getElementById(status).innerHTML = '<div style="margin-top: 10px; color: #667eea;">📤 Uploading...</div>';
+
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                delimiter: file.name.endsWith('.txt') ? '\t' : ',',
+                complete: function(results) {
+                    if (type === 'business') {
+                        businessData = results.data;
+                        document.getElementById('businessCard').classList.add('uploaded');
+                        document.getElementById('businessStatus').innerHTML = '<div style="margin-top: 10px; color: #22c55e;">✓ Uploaded successfully</div>';
+                    } else {
+                        inventoryData = results.data;
+                        document.getElementById('inventoryCard').classList.add('uploaded');
+                        document.getElementById('inventoryStatus').innerHTML = '<div style="margin-top: 10px; color: #22c55e;">✓ Uploaded successfully</div>';
+                    }
+                    
+                    checkAnalyzeButton();
+                },
+                error: function(error) {
+                    document.getElementById(status).innerHTML = '<div style="margin-top: 10px; color: #dc2626;">✗ Error uploading file</div>';
+                    console.error('Error parsing CSV:', error);
+                }
+            });
+        }
+
+        function checkAnalyzeButton() {
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const businessIcon = document.getElementById('businessIcon');
+            const inventoryIcon = document.getElementById('inventoryIcon');
+            const statusMessage = document.getElementById('statusMessage');
+            
+            if (businessData) {
+                businessIcon.textContent = '✅';
+            } else {
+                businessIcon.textContent = '⭕';
+            }
+            
+            if (inventoryData) {
+                inventoryIcon.textContent = '✅';
+            } else {
+                inventoryIcon.textContent = '⭕';
+            }
+            
+            if (businessData && inventoryData) {
+                analyzeBtn.disabled = false;
+                analyzeBtn.style.opacity = '1';
+                statusMessage.textContent = 'Ready to analyze! Click the button below.';
+                statusMessage.classList.add('ready');
+            } else {
+                analyzeBtn.disabled = true;
+                analyzeBtn.style.opacity = '0.5';
+                statusMessage.textContent = 'Upload both reports below to begin analysis';
+                statusMessage.classList.remove('ready');
+            }
+        }
+
+        function analyzeData() {
             const minUnits = parseInt(document.getElementById('minUnits').value) || 7;
             const analysisPeriod = parseInt(document.getElementById('analysisPeriod').value) || 30;
             const minPrice = parseFloat(document.getElementById('minPrice').value) || 0;
@@ -7,16 +804,12 @@ function analyzeData() {
 
             setTimeout(() => {
                 try {
-                    // Step 1: Group inventory by ASIN to check for mixed fulfillment
                     const asinGroups = {};
                     inventoryData.forEach(item => {
-                        // Try multiple possible ASIN column names
                         const asin = item.asin1 || item.asin || item.ASIN || item['product-id'] || item['product-id-type'];
                         
-                        // Skip if no ASIN found
                         if (!asin || asin === '') return;
                         
-                        // Try multiple possible fulfillment column names and normalize
                         let fulfillment = item['fulfillment-channel'] || 
                                         item['Fulfillment Channel'] || 
                                         item.fulfillment || 
@@ -34,12 +827,10 @@ function analyzeData() {
                             };
                         }
                         
-                        // Add the fulfillment method to the set
                         if (fulfillment) {
                             asinGroups[asin].fulfillmentMethods.add(fulfillment);
                         }
                         
-                        // Track SKUs for debugging
                         const sku = item['seller-sku'] || item.sku || item.SKU || 'unknown';
                         asinGroups[asin].skus.push(sku);
                         asinGroups[asin].items.push(item);
@@ -48,7 +839,6 @@ function analyzeData() {
                     console.log('=== DEBUGGING ASIN GROUPING ===');
                     console.log(`Total ASINs found: ${Object.keys(asinGroups).length}`);
                     
-                    // Debug: Show first 5 ASINs with their fulfillment methods
                     Object.values(asinGroups).slice(0, 5).forEach(group => {
                         console.log(`ASIN ${group.asin}:`, {
                             methods: Array.from(group.fulfillmentMethods),
@@ -57,18 +847,15 @@ function analyzeData() {
                         });
                     });
 
-                    // Step 2: Filter for FBM-only ASINs (no mixed fulfillment)
                     const fbmOnlyAsins = Object.values(asinGroups).filter(group => {
                         const methods = Array.from(group.fulfillmentMethods);
                         
-                        // Check for FBA indicators (more comprehensive)
                         const hasFBA = methods.some(method => 
                             method.includes('AMAZON') || 
                             method === 'AFN' ||
                             method === 'FBA'
                         );
                         
-                        // Check for FBM indicators
                         const hasFBM = methods.some(method => 
                             method === 'DEFAULT' || 
                             method === 'MERCHANT' ||
@@ -76,17 +863,11 @@ function analyzeData() {
                             method.includes('SELLER')
                         );
                         
-                        // Only return ASINs that are ONLY FBM (no FBA at all)
                         return hasFBM && !hasFBA;
                     });
 
                     console.log(`FBM-only ASINs (no FBA variants): ${fbmOnlyAsins.length}`);
-                    console.log('Sample FBM-only ASINs:', fbmOnlyAsins.slice(0, 3).map(g => ({
-                        asin: g.asin,
-                        methods: Array.from(g.fulfillmentMethods)
-                    })));
 
-                    // Store debug info
                     debugInfo = `INVENTORY ANALYSIS
 ====================================
 Total ASINs found: ${Object.keys(asinGroups).length}
@@ -108,3 +889,108 @@ SAMPLE ASIN BREAKDOWN (first 10):
   Status: ${hasFBM && !hasFBA ? '✓ FBM-ONLY (ELIGIBLE)' : hasFBA ? '✗ HAS FBA (SKIP)' : '? UNKNOWN'}
 `;
                     });
+
+                    const opportunities = [];
+                    
+                    fbmOnlyAsins.forEach(asinGroup => {
+                        const asin = asinGroup.asin;
+                        const fbmProduct = asinGroup.items[0];
+                        const productName = fbmProduct['item-name'] || fbmProduct['Product Name'] || fbmProduct.title || 'Unknown Product';
+                        const price = parseFloat(fbmProduct.price || fbmProduct.Price || 0);
+
+                        const businessMatch = businessData.find(busItem => {
+                            const busAsin = busItem['(Child) ASIN'] || busItem['(Parent) ASIN'] || busItem.asin1 || busItem.asin || busItem.ASIN;
+                            return busAsin === asin;
+                        });
+
+                        if (businessMatch) {
+                            const unitsSold = parseInt(
+                                businessMatch['Units Ordered'] || 
+                                businessMatch['units-ordered'] ||
+                                businessMatch['Total Units'] ||
+                                businessMatch.units ||
+                                0
+                            );
+
+                            if (unitsSold >= minUnits && price >= minPrice) {
+                                opportunities.push({
+                                    asin: asin,
+                                    productName: productName,
+                                    unitsSold: unitsSold,
+                                    price: price,
+                                    currentMethod: 'FBM',
+                                    revenue: (unitsSold * price).toFixed(2)
+                                });
+                            }
+                        }
+                    });
+
+                    opportunities.sort((a, b) => b.unitsSold - a.unitsSold);
+                    
+                    analysisResults = opportunities;
+                    displayResults(opportunities);
+                    
+                } catch (error) {
+                    console.error('Analysis error:', error);
+                    showStatus('error', 'Error analyzing data. Please check your file formats.');
+                }
+            }, 1000);
+        }
+
+        function displayResults(opportunities) {
+            const resultsDiv = document.getElementById('results');
+            const resultsBody = document.getElementById('resultsBody');
+            const resultsTitle = document.getElementById('resultsTitle');
+            
+            if (opportunities.length === 0) {
+                showStatus('error', 'No products found matching your criteria. Try adjusting the minimum units threshold.');
+                return;
+            }
+
+            hideStatus();
+            resultsTitle.textContent = `${opportunities.length} FBA Conversion Opportunities Found`;
+            
+            resultsBody.innerHTML = '';
+            opportunities.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.asin}</td>
+                    <td>${item.productName}</td>
+                    <td><strong>${item.unitsSold}</strong></td>
+                    <td>$${item.price.toFixed(2)}</td>
+                    <td><span style="background: #fef2f2; color: #991b1b; padding: 4px 12px; border-radius: 6px; font-size: 0.875rem; font-weight: 500;">${item.currentMethod}</span></td>
+                    <td><strong>$${item.revenue}</strong></td>
+                `;
+                resultsBody.appendChild(row);
+            });
+            
+            resultsDiv.style.display = 'block';
+        }
+
+        function exportResults() {
+            if (analysisResults.length === 0) return;
+
+            const csv = Papa.unparse(analysisResults);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `fba-conversion-opportunities-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function showStatus(type, message) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+            status.style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+        }
+
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
